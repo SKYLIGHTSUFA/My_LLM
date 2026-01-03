@@ -1,3 +1,5 @@
+from typing import Optional
+
 class BPE:
     def __init__(self, vocab_size: int):
         self.vocab_size = vocab_size
@@ -62,6 +64,10 @@ class BPE:
             found_id.append(self.token2id[''.join(text)])
 
         return found_id
+
+    def decode(self, token_ids):
+        text = [self.id2token[num] for num in token_ids]
+        return ''.join(text)
 
 
 
