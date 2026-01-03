@@ -46,5 +46,25 @@ class BPE:
 
         self.id2token = {i: tok for i, tok in enumerate(unique_tokens[:self.vocab_size])}
         self.token2id = {tok: i for i, tok in self.id2token.items()}
-
         return unique_tokens[:self.vocab_size]
+
+    def encode(self, text: str):
+        i = 0
+        found_id = []
+        while len(text) >= 0 and i < len(text):
+            if ''.join(text[:len(text)-i-1]) in self.token2id:
+                found_id.append(self.token2id[''.join(text[:len(text)-i-1])])
+                text = text[len(text)-i-1:]
+                i = 0
+                continue
+            i += 1
+        if text:
+            found_id.append(self.token2id[''.join(text)])
+
+        return found_id
+
+
+
+bpe = BPE(22)
+bpe.fit("Ежик в тумане и ")
+bpe.encode("Ежик и в тумане")
