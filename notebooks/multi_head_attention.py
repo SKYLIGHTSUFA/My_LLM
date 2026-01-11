@@ -16,7 +16,7 @@ class MultiHeadAttention(nn.Module):
         self.emb_size = emb_size
         self.head_size = head_size
         self.num_heads = num_heads
-        self.dropout = dropout
+        self.dropout = nn.Dropout(dropout)
 
         self.heads = nn.ModuleList(
             [HeadAttention(emb_size, head_size, max_seq_len) for _ in range(num_heads)]
@@ -27,4 +27,5 @@ class MultiHeadAttention(nn.Module):
         head_outputs = [head(x) for head in self.heads]
         concat = torch.cat(head_outputs, dim=-1)
         out = self.linear(concat)
+        out = self.dropout(out)
         return out

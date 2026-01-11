@@ -7,6 +7,7 @@ from decoder import Decoder
 from positional_embeddings import PositionalEmbeddings
 from token_embedding import TokenEmbeddings
 
+
 class GPT(nn.Module):
     def __init__(
         self,
@@ -41,43 +42,65 @@ class GPT(nn.Module):
             x = decoder(x)
         out = self.final_layer(x)
         return out
-    
-    def generate(self, x: torch.Tensor, max_new_tokens: int, do_sample: bool, temperature: float = 1.0) -> torch.Tensor:     
+
+    def generate(
+        self,
+        x: torch.Tensor,
+        max_new_tokens: int,
+        do_sample: bool,
+        temperature: float = 1.0,
+        top_k: int = None,
+        top_p: float = None,
+    ) -> torch.Tensor:
         generated = x
         for _ in range(max_new_tokens):
-            ctx = generated[:, -self.max_seq_len:]  # (B, T') [web:16]
-            logits = self.forward(ctx)              # (B, T', vocab)
-            next_logits = logits[:, -1, :]/temperature          # (B, vocab) [web:16]
-            probs = torch.softmax(next_logits, dim=-1)
+            ctx = generated[:, -self.max_seq_len :]  # (B, T') [web:16]
+            logits = self.forward(ctx)  # (B, T', vocab)
+            next_logits = logits[:, -1, :] / temperature  # (B, vocab) [web:16]
+            
             if do_sample:
+                if top_k is not None:
+                    values, _ = torch.topk(next_logits, k=top_k, dim=-1)
+                    kth = values[..., -1, None] 
+                    next_logits = next_logits.masked_fill(next_logits < kth, -float("inf"))
+
+                if top_p is not None:
+                    pass
+
+                probs = torch.softmax(next_logits, dim=-1)
                 next_token = torch.multinomial(probs, num_samples=1)
             else:
+                probs = torch.softmax(next_logits, dim=-1)
                 next_token = torch.argmax(probs, dim=-1, keepdim=True)
+            probs = torch.softmax(next_logits, dim=-1)
             generated = torch.cat([generated, next_token], dim=1)
         return generated
-    
+
     def save(self, path):
-        torch.save({
-            'model_state_dict': self.state_dict(),
-            'vocab_size': self.vocab_size,
-            'max_seq_len': self.max_seq_len,
-            'emb_size': self.emb_size,
-            'num_heads': self.num_heads,
-            'head_size': self.head_size,
-            'num_layers': self.num_layers
-        }, path)
-    
+        torch.save(
+            {
+                "model_state_dict": self.state_dict(),
+                "vocab_size": self.vocab_size,
+                "max_seq_len": self.max_seq_len,
+                "emb_size": self.emb_size,
+                "num_heads": self.num_heads,
+                "head_size": self.head_size,
+                "num_layers": self.num_layers,
+            },
+            path,
+        )
+
     @classmethod
     def load(cls, path, device):
         checkpoint = torch.load(path, map_location=device)
         model = cls(
-            vocab_size=checkpoint['vocab_size'],
-            max_seq_len=checkpoint['max_seq_len'],
-            emb_size=checkpoint['emb_size'],
-            num_heads=checkpoint['num_heads'],
-            head_size=checkpoint['head_size'],
-            num_layers=checkpoint['num_layers']
+            vocab_size=checkpoint["vocab_size"],
+            max_seq_len=checkpoint["max_seq_len"],
+            emb_size=checkpoint["emb_size"],
+            num_heads=checkpoint["num_heads"],
+            head_size=checkpoint["head_size"],
+            num_layers=checkpoint["num_layers"],
         )
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint["model_state_dict"])
         model.to(device)
         return model
