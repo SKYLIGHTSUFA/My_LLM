@@ -42,6 +42,56 @@ class GPT(nn.Module):
             x = decoder(x)
         out = self.final_layer(x)
         return out
+    
+    import torch
+    import torch.nn.functional as F
+
+    def fit(self, train_loader, valid_loader, num_epoch: int, learning_rate: float):
+        device = getattr(self, "device", "cpu")  # если в __init__ сохранили self.device
+        self.to(device)
+
+        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+        loss_fn = torch.nn.CrossEntropyLoss()
+
+        for _ in range(num_epoch):
+            # ---- train ----
+            self.train()
+            train_losses = []
+
+            for inputs, targets in train_loader:
+                inputs = inputs.to(device)
+                targets = targets.to(device).long()
+
+                logits = self(inputs)                  # (B, T, V)
+                logits = logits.reshape(-1, logits.size(-1))   # (B*T, V)  [web:1][web:13]
+                targets = targets.reshape(-1)           # (B*T,)          [web:1]
+
+                loss = loss_fn(logits, targets)         # CE expects (N,C) and (N,) [web:1]
+                self.loss = loss
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                train_losses.append(loss.item())
+
+            # ---- valid ----
+            self.eval()
+            valid_losses = []
+
+            with torch.no_grad():
+                for inputs, targets in valid_loader:
+                    inputs = inputs.to(device)
+                    targets = targets.to(device).long()
+
+                    logits = self(inputs)
+                    logits = logits.reshape(-1, logits.size(-1))
+                    targets = targets.reshape(-1)
+
+                    vloss = loss_fn(logits, targets)
+                    self.val_loss = vloss
+                    valid_losses.append(vloss.item())
+
 
     def generate(
         self,
