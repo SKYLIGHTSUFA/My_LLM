@@ -13,3 +13,9 @@ for file_path in glob.glob('/Users/ilnaz/Projecta/My_LLM/data/texts/*.txt'):
     
 all_text = '\n\n\n'.join(all_text)
 print(f"Length of text: {len(all_text)} characters")
+
+bpe = BPE(vocab_size=2000)
+bpe.fit(all_text)
+if not os.path.exists('bpe_tokenizer.pkl'):
+    bpe.save('bpe_tokenizer.pkl')
+    print("BPE tokenizer saved to bpe_tokenizer.pkl")
